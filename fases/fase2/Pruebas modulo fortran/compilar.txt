@@ -1,0 +1,5 @@
+gfortran -I./include -c parser.f90
+
+gfortran -I./include -o MAIN Analiza.f90 parser.o
+
+ ./main.exe
