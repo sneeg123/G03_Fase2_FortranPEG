@@ -7,7 +7,7 @@ program MAIN
     type(Token), allocatable :: myToken
 
     ! Inicializar la cadena de entrada y el cursor
-    input = "foo  Foo bar barbarbar 0 1 256 a b azdfa ADSFADS"
+    input = "foo  Foo bar barbarbar 125 _a_aaaaa0989"
     cursor = 1
 
     ! Bucle para analizar la cadena de entrada

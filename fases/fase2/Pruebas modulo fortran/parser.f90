@@ -11,6 +11,7 @@ contains
         integer, intent(inout) :: cursor
         type(Token), allocatable :: Tokens
         character(len=:), allocatable :: substring 
+        integer :: start
 
         allocate(Tokens)
 
@@ -47,26 +48,43 @@ contains
             return 
         end if
 
-        !Detecta solo un caracter de un rango de 0 9
+       
+
+        ! Detecta uno o más caracteres de un rango de 0-9
         if (iachar(input(cursor:cursor)) >= iachar('0') .and. iachar(input(cursor:cursor)) <= iachar('9')) then
-            allocate(character(len=1) :: Tokens%Lexema)
-            Tokens%Lexema = input(cursor:cursor)
+            
+            start = cursor
+            do while (cursor <= len(input) .and. iachar(input(cursor:cursor)) >= iachar('0') .and. &
+                        iachar(input(cursor:cursor)) <= iachar('9'))
+                cursor = cursor + 1
+            end do
+            allocate(character(len=cursor-start) :: Tokens%Lexema)
+            Tokens%Lexema = input(start:cursor-1)
             allocate(character(len=6) :: Tokens%Tipo)
             Tokens%Tipo = 'digit'
-            cursor = cursor + 1
-            return 
-        end if
+        return 
+    end if
 
-        !Detecta solo un caracter de un rango de a z con lower case
-        substring = input(cursor:cursor )
+       ! Detecta identificadores que comienzan con [_a-zA-Z] y siguen con [a-zA-Z0-9_]
+        substring = input(cursor:cursor)
         call to_lower(substring)
-        if (iachar(substring) >= iachar('a') .and. iachar(substring) <= iachar('z')) then
-            allocate(character(len=1) :: Tokens%Lexema)
-            Tokens%Lexema = input(cursor:cursor)
-            allocate(character(len=6) :: Tokens%Tipo)
+        if ((iachar(substring) >= iachar('a') .and. iachar(substring) <= iachar('z')) .or. substring == '_') then
+            start = cursor
+            
+                do while (cursor <= len(input) .and. &
+                    ((iachar(substring) >= iachar('a') .and. &
+                    iachar(substring) <= iachar('z')) .or. &
+                    (iachar(input(cursor:cursor)) >= iachar('0') .and. &
+                    iachar(input(cursor:cursor)) <= iachar('9')) .or. &
+                    input(cursor:cursor) == '_'))
+                    cursor = cursor + 1
+                    substring = input(cursor:cursor)
+            end do
+            allocate(character(len=cursor-start) :: Tokens%Lexema)
+            Tokens%Lexema = input(start:cursor-1)
+            allocate(character(len=2) :: Tokens%Tipo)
             Tokens%Tipo = 'ID'
-            cursor = cursor + 1
-            return 
+            return
         end if
         
         print *, "error lexico en col ", cursor, ', "' // input(cursor:cursor) // '"'
