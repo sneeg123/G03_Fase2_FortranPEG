@@ -43,14 +43,15 @@ union = expr:expresion rest:(_ @expresion !(_ literales? _ "=") )*
     return new n.Union([expr, ...rest]);
 }
 
-expresion  = label:$(etiqueta/varios)? _ expr:expresiones _ qty:([?+*]/conteo)?
+expresion = ("@")? _ id:$(identificador _ ":")?_ varios? _ expr:expresiones _ qty: ([?+*]/conteo)?
 {
-    return new n.Expresion(expr, label, qty);
+    return new n.Expresion(expr, id, qty);
 }
 
-etiqueta = ("@")? _ id:identificador _ ":" (varios)?
 
-varios = ("!"/"$"/"@"/"&")
+//etiqueta = ("@")? _ id:identificador _ ":" (varios)?
+
+varios = ("!"/"&"/"$")
 
 expresiones  =  id:identificador { usos.push(id) }
                 / expr:$literales caseI:"i"?
@@ -77,7 +78,7 @@ conteo = "|" _ (numero / id:identificador) _ "|"
 
 // Regla principal que analiza corchetes con contenido
 corchetes
-    = "[" contenido:(rango / contenido)+ "]" {
+    = "[" contenido:(rango / texto)+ "]" {
         return `Entrada válida: [${input}]`;
     }
 
@@ -95,26 +96,20 @@ rango
 caracter
     = [a-zA-Z0-9_ ] { return text()}
 
-// Coincide con cualquier contenido que no incluya "]"
-contenido
-    = (corchete / texto)+
 
-corchete
-    = "[" contenido "]"
 
 texto
-    = [^\[\]]+
+    = [^\[\]]
 
 literales = '"' @stringDobleComilla* '"' 
             / "'" @stringSimpleComilla* "'"
 
 stringDobleComilla = !('"' / "\\" / finLinea) .
                     / "\\" escape
-                    / continuacionLinea
 
 stringSimpleComilla = !("'" / "\\" / finLinea) .
                     / "\\" escape
-                    / continuacionLinea
+
 
 continuacionLinea = "\\" secuenciaFinLinea
 

@@ -38,10 +38,10 @@ export class Union extends Node {
 }
     
 export class Expresion extends Node {
-    constructor(expr, label, qty) {
+    constructor(expr, id, qty) {
         super();
         this.expr = expr;
-		this.label = label;
+		this.id = id;
 		this.qty = qty;
     }
 
