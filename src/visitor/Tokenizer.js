@@ -13,7 +13,7 @@ function nextSym(input, cursor) result(lexeme)
     character(len=*), intent(in) :: input
     integer, intent(inout) :: cursor
     character(len=:), allocatable :: lexeme
-
+    character(len=:), allocatable :: substring
     integer :: i
 
     if (cursor > len(input)) then
@@ -27,6 +27,16 @@ function nextSym(input, cursor) result(lexeme)
     print *, "error lexico en col ", cursor, ', "'//input(cursor:cursor)//'"'
     lexeme = "ERROR"
 end function nextSym
+
+    subroutine to_lower(str)
+        character(len=*), intent(inout) :: str
+        integer :: i
+        do i = 1, len(str)
+            if (iachar(str(i:i)) >= iachar('A') .and. iachar(str(i:i)) <= iachar('Z')) then
+                str(i:i) = achar(iachar(str(i:i)) + 32)
+            end if
+        end do
+    end subroutine to_lower
 end module tokenizer 
         `;
   }
@@ -44,14 +54,28 @@ end module tokenizer
     return node.expr.accept(this);
   }
   visitLiteral(node) {
-    return `
+    if (node.isCase == null) {
+      return `
     if ("${node.val}" == input(cursor:cursor + ${node.val.length - 1})) then
         allocate( character(len=${node.val.length}) :: lexeme)
         lexeme = input(cursor:cursor + ${node.val.length - 1})
         cursor = cursor + ${node.val.length}
         return
     end if
-    `;
+    `}
+    else {
+      return `
+    substring = input(cursor:cursor + ${node.val.length - 1})
+    call to_lower(substring)  
+    if ("${node.val.toLowerCase()}" == substring) then
+        allocate( character(len=${node.val.length}) :: lexeme)
+        lexeme = input(cursor:cursor + ${node.val.length - 1})
+        cursor = cursor + ${node.val.length}
+        return
+    end if
+      `
+    };
+    
   }
 
   generateCaracteres(chars) {
