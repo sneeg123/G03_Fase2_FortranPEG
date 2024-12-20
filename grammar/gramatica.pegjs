@@ -59,7 +59,9 @@ expresiones  =  id:identificador { usos.push(id) }
                     return new n.Literal(expr.replace(/['"]/g, ''), caseI);
                 }
                 / "(" _ opciones _ ")"
-                / corchetes "i"?
+                / chars:clase isCase:"i"? {
+                    return new n.Clase(chars, isCase)
+                }
                 / "."
                 / "!."
 
@@ -70,36 +72,15 @@ conteo = "|" _ (numero / id:identificador) _ "|"
         / "|" _ (numero / id:identificador)? _ "," _ opciones _ "|"
         / "|" _ (numero / id:identificador)? _ ".." _ (numero / id2:identificador)? _ "," _ opciones _ "|"
 
-// parteconteo = identificador
-//             / [0-9]? _ ".." _ [0-9]?
-// 			/ [0-9]
+clase
+    = "[" @contenidoClase+ "]"
 
-// delimitador =  "," _ expresion
-
-// Regla principal que analiza corchetes con contenido
-corchetes
-    = "[" contenido:(rango / texto)+ "]" {
-        return `Entrada válida: [${input}]`;
-    }
-
-// Regla para validar un rango como [A-Z]
-rango
-    = inicio:caracter "-" fin:caracter {
-        if (inicio.charCodeAt(0) > fin.charCodeAt(0)) {
-            throw new Error(`Rango inválido: [${inicio}-${fin}]`);
-
-        }
-        return `${inicio}-${fin}`;
-    }
-
-// Regla para caracteres individuales
-caracter
-    = [a-zA-Z0-9_ ] { return text()}
-
-
-
-texto
-    = [^\[\]]
+contenidoClase
+  = bottom:$[^\[\]] "-" top:$[^\[\]] 
+  {
+    return new n.Rango(bottom, top);
+  }
+  / $[^\[\]]
 
 literales = '"' @stringDobleComilla* '"' 
             / "'" @stringSimpleComilla* "'"
