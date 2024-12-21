@@ -81,8 +81,8 @@ export class Rango extends Node {
 		this.top = top;
     }
 
-    accept(visitor) {
-        return visitor.visitRango(this);
+    accept(visitor,isCase) {
+        return visitor.visitRango(this,isCase);
     }
 }
     

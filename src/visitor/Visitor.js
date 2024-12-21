@@ -7,5 +7,5 @@ export default class Visitor {
 	visitExpresion(node) {}
 	visitLiteral(node) {}
 	visitClase(node) {}
-	visitRango(node) {}
+	visitRango(node,isCase) {}
 }

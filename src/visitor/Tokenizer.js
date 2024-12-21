@@ -78,8 +78,9 @@ end module tokenizer
     
   }
 
-  generateCaracteres(chars) {
+  generateCaracteres(chars,caseI) {
     if (chars.length === 0) return "";
+    if (caseI == null){
     return `
     if (findloc([${chars
       .map((char) => `"${char}"`)
@@ -89,22 +90,37 @@ end module tokenizer
         return
     end if
         `;
+      }else{
+      return `
+    substring = input(i:i)
+    call to_lower(substring)
+    if (findloc([${chars
+      .map((char) => `"${char.toLowerCase()}"`)
+      .join(", ")}], substring, 1) > 0) then
+        lexeme = input(cursor:i)
+        cursor = i + 1
+        return
+    end if
+        `;
+    }
   }
 
   visitClase(node) {
+    
     return `
     i = cursor
     ${this.generateCaracteres(
-      node.chars.filter((node) => typeof node === "string")
+      node.chars.filter((node) => typeof node === "string"),node.isCase
     )}
     ${node.chars
       .filter((node) => node instanceof Rango)
-      .map((range) => range.accept(this))
+      .map((range) => range.accept(this,node.isCase))
       .join("\n")}
         `;
   }
 
-  visitRango(node) {
+  visitRango(node,isCase) {
+    if (isCase == null){
     return `
     if (input(i:i) >= "${node.bottom}" .and. input(i:i) <= "${node.top}") then
         lexeme = input(cursor:i)
@@ -112,5 +128,16 @@ end module tokenizer
         return
     end if
         `;
+    }else{
+    return `
+    substring = input(i:i)
+    call to_lower(substring)
+    if (substring >= "${node.bottom.toLowerCase()}" .and. substring <= "${node.top.toLowerCase()}") then
+        lexeme = input(cursor:i)
+        cursor = i + 1
+        return
+    end if
+        `;
+    };
   }
 }
