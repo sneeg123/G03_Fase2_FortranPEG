@@ -51,26 +51,50 @@ end module tokenizer
   visitUnion(node) {
     if(node.exprs.length == 1){
       return node.exprs.map((node) => node.accept(this)).join("\n");
+      
     }else{
+      
       let code = "";
+      code += 'i = cursor \n' 
+      
+      
+      //element.expr.isCase==null
       let n = 0;
       let codeEnd = "";
       let lengthLexema = 0;
       node.exprs.forEach((element) => {
-        // TODO: AGREGAR CASE INSENSITIVE, ESTO ES SOLO PARA LITERALES
+        
+        
+        
         let tabs = "\t".repeat(n);
+        if (element.expr.isCase == null){
         lengthLexema += element.expr.val.length;
+        
         code += `${tabs}if ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
-        code += `${tabs}  cursor = cursor + ${element.expr.val.length-1}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+        code += `${tabs}  cursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
         if(n == node.exprs.length-1){
           // -- TODO: Agregar variable temporal para ir guardando cada lexema
           // -- y no perder el valor de los lexemas anteriores
           code += `${tabs}  allocate( character(len=${lengthLexema}) :: lexeme)\n` 
-          code += `${tabs}  lexeme = input(cursor:cursor + ${lengthLexema-1})\n`
-          code += `${tabs}  cursor = cursor + ${lengthLexema}\n`
+          code += `${tabs}  lexeme = input(i:cursor -1 )\n`
           code += `${tabs}  return\n`
           code += `${tabs}end if\n`
-          code += codeEnd;
+          code += codeEnd;}
+        }else{
+        
+        lengthLexema += element.expr.val.length;
+        code += `substring = input(cursor:cursor + ${element.expr.val.length - 1})\n`
+        code += `call to_lower(substring)\n `
+        code += `${tabs}if ("${element.expr.val.toLowerCase()}" == substring) then\n`
+        code += `${tabs}  cursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+        if(n == node.exprs.length-1){
+          // -- TODO: Agregar variable temporal para ir guardando cada lexema
+          // -- y no perder el valor de los lexemas anteriores
+          code += `${tabs}  allocate( character(len=${lengthLexema}) :: lexeme)\n` 
+          code += `${tabs}  lexeme = input(i:cursor -1 )\n`
+          code += `${tabs}  return\n`
+          code += `${tabs}end if\n`
+          code += codeEnd;} 
         }
         //TODO: REVISAR SI FALTA ALGUN STATEMENT DE FORTRAN
         codeEnd = `${n == 0?"  ":tabs}end if\n` + codeEnd;
