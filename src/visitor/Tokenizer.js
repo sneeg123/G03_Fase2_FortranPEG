@@ -47,9 +47,40 @@ end module tokenizer
   visitOpciones(node) {
     return node.exprs.map((node) => node.accept(this)).join("\n");
   }
+
   visitUnion(node) {
-    return node.exprs.map((node) => node.accept(this)).join("\n");
+    if(node.exprs.length == 1){
+      return node.exprs.map((node) => node.accept(this)).join("\n");
+    }else{
+      let code = "";
+      let n = 0;
+      let codeEnd = "";
+      let lengthLexema = 0;
+      node.exprs.forEach((element) => {
+        // TODO: AGREGAR CASE INSENSITIVE, ESTO ES SOLO PARA LITERALES
+        let tabs = "\t".repeat(n);
+        lengthLexema += element.expr.val.length;
+        code += `${tabs}if ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
+        code += `${tabs}  cursor = cursor + ${element.expr.val.length-1}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+        if(n == node.exprs.length-1){
+          // -- TODO: Agregar variable temporal para ir guardando cada lexema
+          // -- y no perder el valor de los lexemas anteriores
+          code += `${tabs}  allocate( character(len=${lengthLexema}) :: lexeme)\n` 
+          code += `${tabs}  lexeme = input(cursor:cursor + ${lengthLexema-1})\n`
+          code += `${tabs}  cursor = cursor + ${lengthLexema}\n`
+          code += `${tabs}  return\n`
+          code += `${tabs}end if\n`
+          code += codeEnd;
+        }
+        //TODO: REVISAR SI FALTA ALGUN STATEMENT DE FORTRAN
+        codeEnd = `${n == 0?"  ":tabs}end if\n` + codeEnd;
+        n++;
+      });
+      console.log(code);
+      return code;
+    }
   }
+
   visitExpresion(node) {
     return node.expr.accept(this);
   }
