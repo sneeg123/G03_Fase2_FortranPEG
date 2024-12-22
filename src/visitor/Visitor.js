@@ -1,5 +1,3 @@
-
-// Auto-generated
 export default class Visitor {
 	visitProduccion(node) {}
 	visitOpciones(node) {}

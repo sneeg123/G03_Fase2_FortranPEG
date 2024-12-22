@@ -154,3 +154,6 @@ dist
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node,Fortran,vsc,js
 node_modules
+package.json
+package-lock.json
+tools/
