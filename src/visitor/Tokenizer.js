@@ -4,6 +4,9 @@ import { Literal, Rango } from "./CST.js";
 
 export default class Tokenizer extends Visitor {
   generateTokenizer(grammar) {
+    grammar.forEach(element => {
+      element.alias = element.alias == null ? element.id : element.alias;
+    });
     return `
 module parser
     implicit none
@@ -14,6 +17,7 @@ subroutine parse(input)
     character(len=:), intent(inout), allocatable :: input
     character(len=:), allocatable :: lexeme
     integer :: cursor
+    integer :: estado
     cursor = 1  ! Inicializar cursor a 1
     lexeme = ""  
     do while (lexeme /= "EOF" .and. lexeme /= "ERROR")
@@ -34,7 +38,7 @@ function nextSym(input, cursor) result(lexeme)
         lexeme = "EOF"
         return
     end if
-
+    
     ${grammar.map((produccion) => produccion.accept(this)).join("\n")}
 
     print *, "error lexico en col ", cursor, ', "'//input(cursor:cursor)//'"'
@@ -85,8 +89,7 @@ end module parser
             if (element.qty == '?') {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
-                // start.push(element.expr.val);
-                codeStartt == "" ? codeStartt += `input(cursor:cursor + ${element.expr.val.length - 1}) == "${element.expr.val}"` : codeStartt += ` .or. input(cursor:cursor + ${element.expr.val.length - 1}) == "${element.expr.val}"`;
+                start.push(element.expr.val);
               }
               code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
               code += `\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
@@ -126,8 +129,7 @@ end module parser
             } else if (element.qty == '+') {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
-                // start.push(element.expr.val);
-                codeStartt == "" ? codeStartt += `input(cursor:cursor + ${element.expr.val.length - 1}) == "${element.expr.val}"` : codeStartt += ` .or. input(cursor:cursor + ${element.expr.val.length - 1}) == "${element.expr.val}"`;
+                start.push(element.expr.val);
                 startFlag = true;
               }
               code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
@@ -155,8 +157,7 @@ end module parser
             } else {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
-                // start.push(element.expr.val);
-                codeStartt == "" ? codeStartt += `input(cursor:cursor + ${element.expr.val.length - 1}) == "${element.expr.val}"` : codeStartt += ` .or. input(cursor:cursor + ${element.expr.val.length - 1}) == "${element.expr.val}"`;
+                start.push(element.expr.val);
                 startFlag = true;
               }
               code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
@@ -180,24 +181,6 @@ end module parser
             }
             //CASE INSENSITIVE
           } else {
-            // lengthLexema += element.expr.val.length;
-            // if (!startFlag) {
-            //   start.push(element.expr.val);
-            //   startFlag = true;
-            // }
-            // code += `substring = input(cursor:cursor + ${element.expr.val.length - 1})\n`
-            // code += `call to_lower(substring)\n `
-            // code += `${tabs}if ("${element.expr.val.toLowerCase()}" == substring) then\n`
-            // code += `${tabs}  cursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
-            // if (n == node.exprs.length - 1) {
-            //   // -- TODO: Agregar variable temporal para ir guardando cada lexema
-            //   // -- y no perder el valor de los lexemas anteriores
-            //   code += `${tabs}  allocate( character(len=${lengthLexema}) :: lexeme)\n`
-            //   code += `${tabs}  lexeme = input(i:cursor -1 )\n`
-            //   code += `${tabs}  return\n`
-            //   code += `${tabs}end if\n`
-            //   code += codeEnd;
-            // }
             if (element.qty == '?') {
 
               lengthLexema += element.expr.val.length;
@@ -313,29 +296,6 @@ end module parser
           lengthLexema += 1;
           counter += 1;
           if (element.expr.isCase == null || element.expr.isCase == undefined) {
-            // if (element.expr.chars[0] instanceof Rango) {
-            //   code += `${tabs}if (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
-            //   code += `${tabs}  cursor = cursor + 1 \n `;
-            //   if (n == node.exprs.length - 1) {
-            //     code += `${tabs}  allocate( character(len=${counter}) :: lexeme)\n`;
-            //     code += `${tabs}  lexeme = input(i:cursor -1 )\n`;
-            //     code += `${tabs}  return\n`;
-            //     code += `${tabs}end if\n`;
-            //     code += codeEnd;
-            //   }
-            // } else {
-            // code += `if (findloc([${element.expr.chars
-            //   .map((char) => `"${char}"`)
-            //   .join(", ")}], input(cursor:cursor), 1) > 0) then\n`;
-            //   code += `${tabs}  cursor = cursor + 1 \n`;
-            //   if (n == node.exprs.length - 1) {
-            //     code += `${tabs}  allocate( character(len=${counter}) :: lexeme)\n`;
-            //     code += `${tabs}  lexeme = input(i:cursor -1 )\n`;
-            //     code += `${tabs}  return\n`;
-            //     code += `${tabs}end if\n`;
-            //     code += codeEnd;
-            //   }
-            // }
             if (element.expr.chars[0] instanceof Rango) {
               if (element.qty == '?') {
                 code += `\tif (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
@@ -500,29 +460,6 @@ end module parser
               }
             }
           } else {
-            // if (element.expr.chars[0] instanceof Rango) {
-            //   code += `${tabs}if (substring >= "${element.expr.chars[0].bottom.toLowerCase()}"  .and. substring <= ${element.expr.chars[0].top.toLowerCase()}) then\n`;
-            //   code += `${tabs}  cursor = cursor + 1\n `;
-            //   if (n == node.exprs.length - 1) {
-            //     code += `${tabs}  allocate( character(len=${counter}) :: lexeme)\n`;
-            //     code += `${tabs}  lexeme = input(i:cursor -1 )\n`;
-            //     code += `${tabs}  return\n`;
-            //     code += `${tabs}end if\n`;
-            //     code += codeEnd;
-            //   }
-            // } else {
-            //   code += `if (findloc([${element.expr.chars
-            //     .map((char) => `"${char.toLowerCase()}"`)
-            //     .join(", ")}], substring, 1) > 0) then\n`;
-            //   code += `${tabs}  cursor = cursor + 1\n `;
-            //   if (n == node.exprs.length - 1) {
-            //     code += `${tabs}  allocate( character(len=${counter}) :: lexeme)\n`;
-            //     code += `${tabs}  lexeme = input(i:cursor -1 )\n`;
-            //     code += `${tabs}  return\n`;
-            //     code += `${tabs}end if\n`;
-            //     code += codeEnd;
-            //   }
-            // }
             if (element.expr.chars[0] instanceof Rango) {
               if (element.qty == '?') {
                 code += `\tsubstring = input(cursor:cursor)\n`;
@@ -722,7 +659,7 @@ end module parser
         }
       });
       codeStart += ") then\n";
-      if (start.length > 1) {
+      if (start.length > 0) {
         code = codeStart + code;
         code += "end if\n";
       }
