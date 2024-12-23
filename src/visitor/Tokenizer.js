@@ -1,10 +1,10 @@
 import Visitor from "./Visitor.js";
 
-import { Literal, Rango } from "./CST.js";
+import { Literal, Rango, Identificador } from "./CST.js";
 
 export default class Tokenizer extends Visitor {
   generateTokenizer(grammar) {
-    grammar.forEach(element => {
+    grammar.forEach((element) => {
       element.alias = element.alias == null ? element.id : element.alias;
     });
     return `
@@ -17,7 +17,6 @@ subroutine parse(input)
     character(len=:), intent(inout), allocatable :: input
     character(len=:), allocatable :: lexeme
     integer :: cursor
-    integer :: estado
     cursor = 1  ! Inicializar cursor a 1
     lexeme = ""  
     do while (lexeme /= "EOF" .and. lexeme /= "ERROR")
@@ -32,6 +31,7 @@ function nextSym(input, cursor) result(lexeme)
     character(len=:), allocatable :: lexeme
     character(len=:), allocatable :: substring
     integer :: i
+    integer :: estado
 
     if (cursor > len(input)) then
         allocate( character(len=3) :: lexeme )
@@ -63,7 +63,16 @@ end module parser
     return node.exprs.accept(this);
   }
   visitOpciones(node) {
-    return node.exprs.map((node) => node.accept(this)).join("\n");
+    // n = 0;
+    let codigo = `estado = 0\n`;
+    node.exprs.forEach((element, index) => {
+      codigo += `if (estado == ${index}) then\n`;
+      codigo += element.accept(this);
+      codigo += `end if\n`;
+      codigo += `estado = estado + 1\n`;
+    });
+    codigo += `estado = 0\n`;
+    return codigo;
   }
 
   visitUnion(node) {
@@ -86,73 +95,83 @@ end module parser
         let tabs = "\t".repeat(n);
         if (element.expr instanceof Literal) {
           if (element.expr.isCase == null) {
-            if (element.qty == '?') {
+            if (element.qty == "?") {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
                 start.push(element.expr.val);
               }
-              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
-              code += `\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })) then\n`;
+              code += `\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\tend if\n`
+                code += `\tend if\n`;
               }
-            } else if (element.qty == '*') {
+            } else if (element.qty == "*") {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
                 start.push(element.expr.val);
               }
-              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
-              code += `\t\tdo while ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`
-              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
-              code += `\t\tend do\n`
+              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })) then\n`;
+              code += `\t\tdo while ("${
+                element.expr.val
+              }" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`;
+              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\t\tend do\n`;
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\tend if\n`
+                code += `\tend if\n`;
               }
-            } else if (element.qty == '+') {
+            } else if (element.qty == "+") {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
                 start.push(element.expr.val);
                 startFlag = true;
               }
-              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
-              code += `\t\tdo while ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`
-              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
-              code += `\t\tend do\n`
+              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })) then\n`;
+              code += `\t\tdo while ("${
+                element.expr.val
+              }" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`;
+              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\t\tend do\n`;
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
                 //Si no cumple guardar ERROR en el lexema
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\telse\n`
+                code += `\telse\n`;
                 //Si no cumple guardar ERROR en el lexema
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               }
             } else {
               lengthLexema += element.expr.val.length;
@@ -160,104 +179,115 @@ end module parser
                 start.push(element.expr.val);
                 startFlag = true;
               }
-              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1})) then\n`
-              code += `\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\tif ("${element.expr.val}" == input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })) then\n`;
+              code += `\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               }
             }
             //CASE INSENSITIVE
           } else {
-            if (element.qty == '?') {
-
+            if (element.qty == "?") {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
                 start.push(element.expr.val);
               }
-              code += `\tsubstring = input(cursor:cursor + ${element.expr.val.length - 1})\n`
-              code += `\tcall to_lower(substring)\n`
+              code += `\tsubstring = input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })\n`;
+              code += `\tcall to_lower(substring)\n`;
               code += `print *, substring\n`;
-              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`
-              code += `\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`;
+              code += `\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\tend if\n`
+                code += `\tend if\n`;
               }
-            } else if (element.qty == '*') {
+            } else if (element.qty == "*") {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
                 start.push(element.expr.val);
               }
-              code += `\tsubstring = input(cursor:cursor + ${element.expr.val.length - 1})\n`
-              code += `\tcall to_lower(substring)\n`
+              code += `\tsubstring = input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })\n`;
+              code += `\tcall to_lower(substring)\n`;
               code += `print *, substring\n`;
-              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`
-              code += `\t\tdo while ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`
-              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
-              code += `\t\tend do\n`
+              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`;
+              code += `\t\tdo while ("${
+                element.expr.val
+              }" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`;
+              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\t\tend do\n`;
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\tend if\n`
+                code += `\tend if\n`;
               }
-            } else if (element.qty == '+') {
+            } else if (element.qty == "+") {
               lengthLexema += element.expr.val.length;
               if (!startFlag) {
                 start.push(element.expr.val);
                 startFlag = true;
               }
-              code += `\tsubstring = input(cursor:cursor + ${element.expr.val.length - 1})\n`
-              code += `\tcall to_lower(substring)\n`
+              code += `\tsubstring = input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })\n`;
+              code += `\tcall to_lower(substring)\n`;
               code += `print *, substring\n`;
-              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`
-              code += `\t\tdo while ("${element.expr.val}" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`
-              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
-              code += `\t\tend do\n`
+              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`;
+              code += `\t\tdo while ("${
+                element.expr.val
+              }" == input(cursor:cursor + ${element.expr.val.length - 1}))\n`;
+              code += `\t\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\t\tend do\n`;
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
                 //Si no cumple guardar ERROR en el lexema
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\telse\n`
+                code += `\telse\n`;
                 //Si no cumple guardar ERROR en el lexema
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               }
             } else {
               lengthLexema += element.expr.val.length;
@@ -265,54 +295,57 @@ end module parser
                 start.push(element.expr.val);
                 startFlag = true;
               }
-              code += `\tsubstring = input(cursor:cursor + ${element.expr.val.length - 1})\n`
-              code += `\tcall to_lower(substring)\n`
+              code += `\tsubstring = input(cursor:cursor + ${
+                element.expr.val.length - 1
+              })\n`;
+              code += `\tcall to_lower(substring)\n`;
               code += `print *, substring\n`;
-              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`
-              code += `\t\tcursor = cursor + ${element.expr.val.length}\n` //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
+              code += `\tif ("${element.expr.val.toLowerCase()}" == substring) then\n`;
+              code += `\t\tcursor = cursor + ${element.expr.val.length}\n`; //CORRER CURSOR PARA LEER EN EL SIGUIENTE IF
               if (n == node.exprs.length - 1) {
-                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                code += `\t\tlexeme = input(i:cursor -1 )\n`
-                code += `\t\treturn\n`
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                code += `\t\treturn\n`;
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               } else {
-                code += `\telse\n`
-                code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                code += `\t\tlexeme = "ERROR"\n`
-                code += `\t\treturn\n`
-                code += `\tend if\n`
+                code += `\telse\n`;
+                code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                code += `\t\tlexeme = "ERROR"\n`;
+                code += `\t\treturn\n`;
+                code += `\tend if\n`;
               }
             }
           }
           //TODO: REVISAR SI FALTA ALGUN STATEMENT DE FORTRAN
           // codeEnd = `${n == 0 ? "  " : tabs}end if\n` + codeEnd;
           // RANGOS Y CARACTERES
+        } else if (element.expr instanceof Identificador) {
+          console.log("es un identificador");
         } else {
-          console.log("es un rango")
           lengthLexema += 1;
           counter += 1;
           if (element.expr.isCase == null || element.expr.isCase == undefined) {
             if (element.expr.chars[0] instanceof Rango) {
-              if (element.qty == '?') {
+              if (element.qty == "?") {
                 code += `\tif (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
                 code += `\t\tcursor = cursor + 1 \n`;
                 if (n == node.exprs.length - 1) {
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-              } else if (element.qty == '*') {
+              } else if (element.qty == "*") {
                 code += `\tif (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
                 code += `\t\tdo while (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}")\n`;
                 code += `\t\tcursor = cursor + 1 \n`;
@@ -321,16 +354,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-
-              } else if (element.qty == '+') {
+              } else if (element.qty == "+") {
                 code += `\tif (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
                 code += `\t\tdo while (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}")\n`;
                 code += `\t\tcursor = cursor + 1 \n`;
@@ -339,17 +371,17 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               } else {
                 code += `\tif (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
@@ -358,21 +390,21 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               }
             } else {
-              if (element.qty == '?') {
+              if (element.qty == "?") {
                 code += `\tif (findloc([${element.expr.chars
                   .map((char) => `"${char}"`)
                   .join(", ")}], input(cursor:cursor), 1) > 0) then\n`;
@@ -381,15 +413,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-              } else if (element.qty == '*') {
+              } else if (element.qty == "*") {
                 code += `\tif (findloc([${element.expr.chars
                   .map((char) => `"${char}"`)
                   .join(", ")}], input(cursor:cursor), 1) > 0) then\n`;
@@ -402,16 +434,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-
-              } else if (element.qty == '+') {
+              } else if (element.qty == "+") {
                 code += `\tif (findloc([${element.expr.chars
                   .map((char) => `"${char}"`)
                   .join(", ")}], input(cursor:cursor), 1) > 0) then\n`;
@@ -424,17 +455,17 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               } else {
                 code += `\tif (findloc([${element.expr.chars
@@ -445,23 +476,23 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               }
             }
           } else {
             if (element.expr.chars[0] instanceof Rango) {
-              if (element.qty == '?') {
+              if (element.qty == "?") {
                 code += `\tsubstring = input(cursor:cursor)\n`;
                 code += `\tcall to_lower(substring)\n`;
                 code += `\tif (substring >= "${element.expr.chars[0].bottom.toLowerCase()}"  .and. substring <= "${element.expr.chars[0].top.toLowerCase()}") then\n`;
@@ -470,15 +501,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-              } else if (element.qty == '*') {
+              } else if (element.qty == "*") {
                 code += `\tsubstring = input(cursor:cursor)\n`;
                 code += `\tcall to_lower(substring)\n`;
                 code += `\tif (substring >= "${element.expr.chars[0].bottom.toLowerCase()}"  .and. substring <= "${element.expr.chars[0].top.toLowerCase()}") then\n`;
@@ -491,16 +522,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-
-              } else if (element.qty == '+') {
+              } else if (element.qty == "+") {
                 code += `\tsubstring = input(cursor:cursor)\n`;
                 code += `\tcall to_lower(substring)\n`;
                 code += `\tif (substring >= "${element.expr.chars[0].bottom.toLowerCase()}"  .and. substring <= "${element.expr.chars[0].top.toLowerCase()}") then\n`;
@@ -513,17 +543,17 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               } else {
                 code += `\tsubstring = input(cursor:cursor)\n`;
@@ -534,21 +564,21 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               }
             } else {
-              if (element.qty == '?') {
+              if (element.qty == "?") {
                 code += `\tsubstring = input(cursor:cursor)\n`;
                 code += `\tcall to_lower(substring)\n`;
                 code += `\tif (findloc([${element.expr.chars
@@ -559,15 +589,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-              } else if (element.qty == '*') {
+              } else if (element.qty == "*") {
                 code += `\tsubstring = input(cursor:cursor)\n`;
                 code += `\tcall to_lower(substring)\n`;
                 code += `\tif (findloc([${element.expr.chars
@@ -584,16 +614,15 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`
-                  code += `\t\tlexeme = input(i:cursor -1 )\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
+                  code += `\t\tlexeme = input(i:cursor -1 )\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\tend if\n`
+                  code += `\tend if\n`;
                 }
-
-              } else if (element.qty == '+') {
+              } else if (element.qty == "+") {
                 code += `\tsubstring = input(cursor:cursor)\n`;
                 code += `\tcall to_lower(substring)\n`;
                 code += `\tif (findloc([${element.expr.chars
@@ -610,17 +639,17 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               } else {
                 code += `\tsubstring = input(cursor:cursor)\n`;
@@ -633,17 +662,17 @@ end module parser
                   code += `\t\tallocate( character(len=${lengthLexema}) :: lexeme)\n`;
                   code += `\t\tlexeme = input(i:cursor -1 )\n`;
                   code += `\t\treturn\n`;
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 } else {
-                  code += `\telse\n`
-                  code += `\t\tallocate( character(len=5) :: lexeme)\n`
-                  code += `\t\tlexeme = "ERROR"\n`
-                  code += `\t\treturn\n`
-                  code += `\tend if\n`
+                  code += `\telse\n`;
+                  code += `\t\tallocate( character(len=5) :: lexeme)\n`;
+                  code += `\t\tlexeme = "ERROR"\n`;
+                  code += `\t\treturn\n`;
+                  code += `\tend if\n`;
                 }
               }
             }
@@ -653,7 +682,9 @@ end module parser
       });
       let codeStart = "if (";
       start.forEach((element, index) => {
-        codeStart += `input(cursor:cursor + ${element.length - 1}) == "${element}"`;
+        codeStart += `input(cursor:cursor + ${
+          element.length - 1
+        }) == "${element}"`;
         if (index < start.length - 1) {
           codeStart += " .or. ";
         }
@@ -663,14 +694,13 @@ end module parser
         code = codeStart + code;
         code += "end if\n";
       }
-      console.log(code);
       return code;
     }
   }
 
-
   visitExpresion(node) {
     return node.expr.accept(this);
+    console.log(code);
   }
   visitLiteral(node) {
     if (node.isCase == null) {
@@ -701,8 +731,8 @@ end module parser
     if (caseI == null) {
       return `
     if (findloc([${chars
-          .map((char) => `"${char}"`)
-          .join(", ")}], input(i:i), 1) > 0) then
+      .map((char) => `"${char}"`)
+      .join(", ")}], input(i:i), 1) > 0) then
         lexeme = input(cursor:i)
         cursor = i + 1
         return
@@ -713,8 +743,8 @@ end module parser
     substring = input(i:i)
     call to_lower(substring)
     if (findloc([${chars
-          .map((char) => `"${char.toLowerCase()}"`)
-          .join(", ")}], substring, 1) > 0) then
+      .map((char) => `"${char.toLowerCase()}"`)
+      .join(", ")}], substring, 1) > 0) then
         lexeme = input(cursor:i)
         cursor = i + 1
         return
@@ -731,9 +761,9 @@ end module parser
       node.isCase
     )}
     ${node.chars
-        .filter((node) => node instanceof Rango)
-        .map((range) => range.accept(this, node.isCase))
-        .join("\n")}
+      .filter((node) => node instanceof Rango)
+      .map((range) => range.accept(this, node.isCase))
+      .join("\n")}
         `;
   }
 

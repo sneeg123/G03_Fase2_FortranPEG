@@ -6,4 +6,5 @@ export default class Visitor {
   visitLiteral(node) {}
   visitClase(node) {}
   visitRango(node, isCase) {}
+  visitIdentificador(node) {}
 }

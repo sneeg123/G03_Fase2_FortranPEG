@@ -291,7 +291,10 @@ function peg$parse(input, options) {
   var peg$f4 = function(id, expr, qty) {
     return new n.Expresion(expr, id, qty);
 };
-  var peg$f5 = function(id) { usos.push(id) };
+  var peg$f5 = function(id) { 
+                usos.push(id) 
+                return new n.Identificador(id)
+                };
   var peg$f6 = function(expr, caseI) {
                     return new n.Literal(expr.replace(/['"]/g, ''), caseI);
                 };

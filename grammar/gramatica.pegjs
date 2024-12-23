@@ -53,7 +53,11 @@ expresion = ("@")? _ id:$(identificador _ ":")?_ varios? _ expr:expresiones _ qt
 
 varios = ("!"/"&"/"$")
 
-expresiones  =  id:identificador { usos.push(id) }
+expresiones  =  id:identificador 
+                { 
+                usos.push(id) 
+                return new n.Identificador(id)
+                }
                 / expr:$literales caseI:"i"?
                 {
                     return new n.Literal(expr.replace(/['"]/g, ''), caseI);

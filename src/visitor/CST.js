@@ -83,3 +83,14 @@ export class Rango extends Node {
     return visitor.visitRango(this, isCase);
   }
 }
+
+export class Identificador extends Node {
+  constructor(id) {
+    super();
+    this.id = id;
+  }
+
+  accept(visitor) {
+    return visitor.visitIdentificador(this);
+  }
+}
