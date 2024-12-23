@@ -5,10 +5,23 @@ import { Literal, Rango } from "./CST.js";
 export default class Tokenizer extends Visitor {
   generateTokenizer(grammar) {
     return `
-module tokenizer
-implicit none
+module parser
+    implicit none
 
 contains
+
+subroutine parse(input)
+    character(len=:), intent(inout), allocatable :: input
+    character(len=:), allocatable :: lexeme
+    integer :: cursor
+    cursor = 1  ! Inicializar cursor a 1
+    lexeme = ""  
+    do while (lexeme /= "EOF" .and. lexeme /= "ERROR")
+        lexeme = nextSym(input, cursor)
+        print *, lexeme
+    end do
+end subroutine parse
+
 function nextSym(input, cursor) result(lexeme)
     character(len=*), intent(in) :: input
     integer, intent(inout) :: cursor
@@ -37,7 +50,8 @@ end function nextSym
             end if
         end do
     end subroutine to_lower
-end module tokenizer 
+
+end module parser
         `;
   }
 
@@ -133,7 +147,7 @@ end module tokenizer
           counter = counter + 1;
           if (element.expr.isCase == null) {
             if (element.expr.chars[0] instanceof Rango) {
-              code += `${tabs}if (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(i:i) <= "${element.expr.chars[0].top}") then\n`;
+              code += `${tabs}if (input(cursor:cursor) >= "${element.expr.chars[0].bottom}"  .and. input(cursor:cursor) <= "${element.expr.chars[0].top}") then\n`;
               code += `${tabs}  cursor = cursor + 1 \n `;
               if (n == node.exprs.length - 1) {
                 code += `${tabs}  allocate( character(len=${counter}) :: lexeme)\n`;
